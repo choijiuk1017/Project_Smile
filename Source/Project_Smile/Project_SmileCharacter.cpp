@@ -1,6 +1,25 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Project_SmileCharacter.h"
+
+
+#include "Engine/World.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "ImageUtils.h"
+#include "HAL/FileManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Modules/ModuleManager.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+
+#include "HttpModule.h"
+#include "Interfaces/IHttpRequest.h"
+#include "Interfaces/IHttpResponse.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonReader.h"
+
+
 #include "Project_SmileProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
@@ -35,6 +54,57 @@ AProject_SmileCharacter::AProject_SmileCharacter()
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
 
+
+	PrimaryActorTick.bCanEverTick = true;
+
+	CaptureRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CaptureRoot"));
+	CaptureRoot->SetupAttachment(GetRootComponent());
+
+	SceneCaptureComp = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCaptureComp"));
+	SceneCaptureComp->SetupAttachment(CaptureRoot);
+
+	SceneCaptureComp->bCaptureEveryFrame = false;
+	SceneCaptureComp->bCaptureOnMovement = false;
+	SceneCaptureComp->ProjectionType = ECameraProjectionMode::Perspective;
+	SceneCaptureComp->FOVAngle = 90.0f;
+
+	CaptureRoot->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
+
+}
+
+
+void AProject_SmileCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	CaptureRenderTarget = NewObject<UTextureRenderTarget2D>(this);
+	if (CaptureRenderTarget)
+	{
+		CaptureRenderTarget->InitAutoFormat(1024, 1024);
+		CaptureRenderTarget->ClearColor = FLinearColor::Black;
+		CaptureRenderTarget->TargetGamma = 2.2f;
+		CaptureRenderTarget->UpdateResourceImmediate(true);
+
+		SceneCaptureComp->TextureTarget = CaptureRenderTarget;
+	}
+
+	if (SceneCaptureComp)
+	{
+		SceneCaptureComp->bCaptureEveryFrame = false;
+		SceneCaptureComp->bCaptureOnMovement = false;
+		SceneCaptureComp->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+
+		SceneCaptureComp->PostProcessSettings.bOverride_AutoExposureMethod = true;
+		SceneCaptureComp->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+
+		SceneCaptureComp->PostProcessSettings.bOverride_AutoExposureBias = true;
+		SceneCaptureComp->PostProcessSettings.AutoExposureBias = 3.0f;
+	}
+}
+
+void  AProject_SmileCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
 //////////////////////////////////////////////////////////////////////////// Input
@@ -67,6 +137,8 @@ void AProject_SmileCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AProject_SmileCharacter::Look);
+
+		EnhancedInputComponent->BindAction(CaptureAction, ETriggerEvent::Triggered, this, &AProject_SmileCharacter::CapturePhoto);
 	}
 	else
 	{
@@ -99,4 +171,122 @@ void AProject_SmileCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+void AProject_SmileCharacter::CapturePhoto()
+{
+	if (!SceneCaptureComp || !CaptureRenderTarget)
+	{
+		return;
+	}
+
+	SceneCaptureComp->CaptureScene();
+
+	SendCaptureToServer();
+}
+
+bool AProject_SmileCharacter::ConvertRenderTargetToPNGBytes(UTextureRenderTarget2D* RenderTarget, TArray<uint8>& OutPNGData)
+{
+	if (!RenderTarget)
+	{
+		return false;
+	}
+
+	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
+	if (!RenderTargetResource)
+	{
+		return false;
+	}
+
+	TArray<FColor> PixelData;
+	if (!RenderTargetResource->ReadPixels(PixelData))
+	{
+		return false;
+	}
+
+	const int32 Width = RenderTarget->SizeX;
+	const int32 Height = RenderTarget->SizeY;
+
+	IImageWrapperModule& ImageWrapperModule =
+		FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
+
+	TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+	if (!ImageWrapper.IsValid())
+	{
+		return false;
+	}
+
+	if (!ImageWrapper->SetRaw(
+		PixelData.GetData(),
+		PixelData.Num() * sizeof(FColor),
+		Width,
+		Height,
+		ERGBFormat::BGRA,
+		8))
+	{
+		return false;
+	}
+
+	const TArray64<uint8>& CompressedData = ImageWrapper->GetCompressed(100);
+
+	OutPNGData.Reset();
+	OutPNGData.Append(CompressedData.GetData(), CompressedData.Num());
+
+	return true;
+}
+
+void AProject_SmileCharacter::SendCaptureToServer()
+{
+	if (!SceneCaptureComp || !CaptureRenderTarget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Capture components are invalid"));
+		return;
+	}
+
+	SceneCaptureComp->CaptureScene();
+
+	TArray<uint8> PNGData;
+	if (!ConvertRenderTargetToPNGBytes(CaptureRenderTarget, PNGData))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to convert render target to PNG bytes"));
+		return;
+	}
+
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+
+	Request->SetURL(TEXT("http://127.0.0.1:5000/predict"));
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
+	Request->SetContent(PNGData);
+
+	Request->OnProcessRequestComplete().BindLambda(
+		[](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			if (!bWasSuccessful || !Response.IsValid())
+			{
+				UE_LOG(LogTemp, Error, TEXT("HTTP request failed"));
+				return;
+			}
+
+			FString ResponseString = Response->GetContentAsString();
+			UE_LOG(LogTemp, Warning, TEXT("Server Response: %s"), *ResponseString);
+
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseString);
+
+			if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+			{
+				FString PredictedClass = JsonObject->GetStringField(TEXT("class"));
+				double Confidence = JsonObject->GetNumberField(TEXT("confidence"));
+
+				UE_LOG(LogTemp, Warning, TEXT("Predicted Class: %s"), *PredictedClass);
+				UE_LOG(LogTemp, Warning, TEXT("Confidence: %f"), Confidence);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON response"));
+			}
+		});
+
+	Request->ProcessRequest();
 }

@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/TextureRenderTarget2D.h"
+
 #include "Project_SmileCharacter.generated.h"
 
 class UInputComponent;
@@ -45,6 +48,9 @@ class AProject_SmileCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* CaptureAction;
+
 public:
 	AProject_SmileCharacter();
 
@@ -59,7 +65,26 @@ protected:
 	// APawn interface
 	virtual void NotifyControllerChanged() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+
+	virtual void Tick(float DeltaTime) override;
+	virtual void BeginPlay() override;
 	// End of APawn interface
+
+private:
+	UPROPERTY(VisibleAnywhere, Category="Capture")
+	USceneComponent* CaptureRoot;
+
+	UPROPERTY(VisibleAnywhere, Category = "Capture")
+	USceneCaptureComponent2D* SceneCaptureComp;
+
+	UPROPERTY()
+	UTextureRenderTarget2D* CaptureRenderTarget;
+
+	void CapturePhoto();
+
+	void SendCaptureToServer();
+
+	bool ConvertRenderTargetToPNGBytes(UTextureRenderTarget2D* RenderTarget, TArray<uint8>& OutPNGData);
 
 public:
 	/** Returns Mesh1P subobject **/

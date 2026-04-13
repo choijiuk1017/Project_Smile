@@ -8,6 +8,19 @@ public class Project_Smile : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[] 
+		{ "Core",
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput" ,
+			"RenderCore",
+			"RHI",
+			"ImageWrapper",
+			"ImageWriteQueue",
+            "HTTP",
+			"Json",
+			"JsonUtilities"
+        });
 	}
 }

@@ -138,7 +138,7 @@ void AProject_SmileCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AProject_SmileCharacter::Look);
 
-		EnhancedInputComponent->BindAction(CaptureAction, ETriggerEvent::Triggered, this, &AProject_SmileCharacter::CapturePhoto);
+		EnhancedInputComponent->BindAction(CaptureAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::CapturePhoto);
 	}
 	else
 	{
@@ -180,7 +180,7 @@ void AProject_SmileCharacter::CapturePhoto()
 		return;
 	}
 
-	SceneCaptureComp->CaptureScene();
+	//SceneCaptureComp->CaptureScene();
 
 	SendCaptureToServer();
 }
@@ -192,6 +192,7 @@ bool AProject_SmileCharacter::ConvertRenderTargetToPNGBytes(UTextureRenderTarget
 		return false;
 	}
 
+	// GPU -> CPU 데이터 접근
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 	if (!RenderTargetResource)
 	{
@@ -199,7 +200,7 @@ bool AProject_SmileCharacter::ConvertRenderTargetToPNGBytes(UTextureRenderTarget
 	}
 
 	TArray<FColor> PixelData;
-	if (!RenderTargetResource->ReadPixels(PixelData))
+	if (!RenderTargetResource->ReadPixels(PixelData)) // 화면 데이터를 FColor 배열로 전환
 	{
 		return false;
 	}
@@ -216,6 +217,7 @@ bool AProject_SmileCharacter::ConvertRenderTargetToPNGBytes(UTextureRenderTarget
 		return false;
 	}
 
+	// PNG 압축
 	if (!ImageWrapper->SetRaw(
 		PixelData.GetData(),
 		PixelData.Num() * sizeof(FColor),
@@ -227,8 +229,10 @@ bool AProject_SmileCharacter::ConvertRenderTargetToPNGBytes(UTextureRenderTarget
 		return false;
 	}
 
+	// 압축률 100, 최고 품질
 	const TArray64<uint8>& CompressedData = ImageWrapper->GetCompressed(100);
 
+	// 서버로 보낼 데이터, 리셋 후 새로 보냄
 	OutPNGData.Reset();
 	OutPNGData.Append(CompressedData.GetData(), CompressedData.Num());
 
@@ -239,21 +243,23 @@ void AProject_SmileCharacter::SendCaptureToServer()
 {
 	if (!SceneCaptureComp || !CaptureRenderTarget)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Capture components are invalid"));
 		return;
 	}
 
 	SceneCaptureComp->CaptureScene();
 
+
+	// 이미지 -> byte 변환
 	TArray<uint8> PNGData;
 	if (!ConvertRenderTargetToPNGBytes(CaptureRenderTarget, PNGData))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to convert render target to PNG bytes"));
 		return;
 	}
 
+	// 언리얼 HTTP 객체 생성
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 
+	// 요청 설정
 	Request->SetURL(TEXT("http://127.0.0.1:5000/predict"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));

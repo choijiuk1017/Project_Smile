@@ -70,6 +70,8 @@ AProject_SmileCharacter::AProject_SmileCharacter()
 
 	CaptureRoot->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
 
+	CurrentAreaID = "TutorialZone";
+
 }
 
 

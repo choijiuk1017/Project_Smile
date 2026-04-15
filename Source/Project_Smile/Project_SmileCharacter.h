@@ -87,6 +87,10 @@ private:
 	bool ConvertRenderTargetToPNGBytes(UTextureRenderTarget2D* RenderTarget, TArray<uint8>& OutPNGData);
 
 public:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "ID")
+	FName CurrentAreaID;
+
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/

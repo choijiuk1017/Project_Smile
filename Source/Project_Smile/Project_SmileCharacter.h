@@ -18,6 +18,8 @@ class UInputMappingContext;
 struct FInputActionValue;
 
 class UPuzzleHintDialogue;
+class UCaptureSelection;
+
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -53,6 +55,11 @@ class AProject_SmileCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* CaptureAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ToggleSelectionUIAction;
+
+
+
 public:
 	AProject_SmileCharacter();
 
@@ -62,6 +69,24 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+	void CapturePhoto();
+
+	void ToggleCaptureSelectionUI();
+
+	void SendCaptureToServer();
+
+	void SendCaptureToServerWithSelection();
+
+	bool ConvertRenderTargetToPNGBytes(UTextureRenderTarget2D* RenderTarget, TArray<uint8>& OutPNGData);
+
+	bool ConvertRenderTargetToCroppedPNGBytes(
+		UTextureRenderTarget2D* RenderTarget,
+		TArray<uint8>& OutPNGData,
+		int32 CropX,
+		int32 CropY,
+		int32 CropWidth,
+		int32 CropHeight);
 
 protected:
 	// APawn interface
@@ -78,6 +103,13 @@ protected:
 	UPROPERTY()
 	UPuzzleHintDialogue* PuzzleHintDialogueWidget = nullptr;
 
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UCaptureSelection> CaptureSelectionWidgetClass;
+
+	UPROPERTY()
+	UCaptureSelection* CaptureSelectionWidgetInstance = nullptr;
+
+
 private:
 	UPROPERTY(VisibleAnywhere, Category="Capture")
 	USceneComponent* CaptureRoot;
@@ -88,13 +120,6 @@ private:
 	UPROPERTY()
 	UTextureRenderTarget2D* CaptureRenderTarget;
 
-	
-
-	void CapturePhoto();
-
-	void SendCaptureToServer();
-
-	bool ConvertRenderTargetToPNGBytes(UTextureRenderTarget2D* RenderTarget, TArray<uint8>& OutPNGData);
 
 public:
 

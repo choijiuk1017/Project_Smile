@@ -30,6 +30,8 @@
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
 
+#include "Project_Smile/Widget/PuzzleHintDialogue.h"
+
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 //////////////////////////////////////////////////////////////////////////
@@ -265,10 +267,13 @@ void AProject_SmileCharacter::SendCaptureToServer()
 	Request->SetURL(TEXT("http://127.0.0.1:5000/predict"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
+
+	Request->SetHeader(TEXT("X-Area-Id"), CurrentAreaID);
+
 	Request->SetContent(PNGData);
 
 	Request->OnProcessRequestComplete().BindLambda(
-		[](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
+		[this](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
 			if (!bWasSuccessful || !Response.IsValid())
 			{
@@ -287,14 +292,28 @@ void AProject_SmileCharacter::SendCaptureToServer()
 				FString PredictedClass = JsonObject->GetStringField(TEXT("class"));
 				double Confidence = JsonObject->GetNumberField(TEXT("confidence"));
 
+				FString Hint = JsonObject->GetStringField(TEXT("hint")); 
+
 				UE_LOG(LogTemp, Warning, TEXT("Predicted Class: %s"), *PredictedClass);
 				UE_LOG(LogTemp, Warning, TEXT("Confidence: %f"), Confidence);
+				UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint); 
+
+				if (!this->PuzzleHintDialogueClass) return;
+
+				PuzzleHintDialogueWidget = CreateWidget<UPuzzleHintDialogue>(GetWorld(), PuzzleHintDialogueClass);
+
+				if (PuzzleHintDialogueWidget)
+				{
+					PuzzleHintDialogueWidget->SetDialogue(*Hint);
+					PuzzleHintDialogueWidget->AddToViewport(100);
+				}
+				
 			}
 			else
 			{
 				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON response"));
 			}
 		});
-
+		
 	Request->ProcessRequest();
 }

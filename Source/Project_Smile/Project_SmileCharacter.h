@@ -17,6 +17,8 @@ class UInputAction;
 class UInputMappingContext;
 struct FInputActionValue;
 
+class UPuzzleHintDialogue;
+
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 UCLASS(config=Game)
@@ -70,6 +72,12 @@ protected:
 	virtual void BeginPlay() override;
 	// End of APawn interface
 
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UPuzzleHintDialogue> PuzzleHintDialogueClass;
+
+	UPROPERTY()
+	UPuzzleHintDialogue* PuzzleHintDialogueWidget = nullptr;
+
 private:
 	UPROPERTY(VisibleAnywhere, Category="Capture")
 	USceneComponent* CaptureRoot;
@@ -80,6 +88,8 @@ private:
 	UPROPERTY()
 	UTextureRenderTarget2D* CaptureRenderTarget;
 
+	
+
 	void CapturePhoto();
 
 	void SendCaptureToServer();
@@ -89,7 +99,7 @@ private:
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "ID")
-	FName CurrentAreaID;
+	FString CurrentAreaID;
 
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

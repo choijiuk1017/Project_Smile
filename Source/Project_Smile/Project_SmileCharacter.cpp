@@ -482,52 +482,82 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("Sending PNG Size: %d bytes"), PNGData.Num());
+	UE_LOG(LogTemp, Warning, TEXT("AreaID: %s"), *CurrentAreaID);
+
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 
 	Request->SetURL(TEXT("http://127.0.0.1:5000/predict"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
 	Request->SetHeader(TEXT("X-Area-Id"), CurrentAreaID);
+	Request->SetHeader(TEXT("X-Spoiler-Level"), TEXT("1"));
 	Request->SetContent(PNGData);
+	Request->SetTimeout(300.0f);
 
 	Request->OnProcessRequestComplete().BindLambda(
 		[this](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
-			if (!bWasSuccessful || !Response.IsValid())
+			UE_LOG(LogTemp, Warning, TEXT("HTTP Completed"));
+			UE_LOG(LogTemp, Warning, TEXT("bWasSuccessful: %s"), bWasSuccessful ? TEXT("true") : TEXT("false"));
+			UE_LOG(LogTemp, Warning, TEXT("URL: %s"), *Req->GetURL());
+			UE_LOG(LogTemp, Warning, TEXT("Status: %d"), (int32)Req->GetStatus());
+
+			if (!Response.IsValid())
+			{
+				UE_LOG(LogTemp, Error, TEXT("Response is invalid"));
+				return;
+			}
+
+			const int32 ResponseCode = Response->GetResponseCode();
+			const FString ResponseString = Response->GetContentAsString();
+
+			UE_LOG(LogTemp, Warning, TEXT("Response Code: %d"), ResponseCode);
+			UE_LOG(LogTemp, Warning, TEXT("Response Body: %s"), *ResponseString);
+
+			if (!bWasSuccessful || ResponseCode < 200 || ResponseCode >= 300)
 			{
 				UE_LOG(LogTemp, Error, TEXT("HTTP request failed"));
 				return;
 			}
 
-			FString ResponseString = Response->GetContentAsString();
-			UE_LOG(LogTemp, Warning, TEXT("Server Response: %s"), *ResponseString);
-
 			TSharedPtr<FJsonObject> JsonObject;
 			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseString);
 
-			if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
-			{
-				FString PredictedClass = JsonObject->GetStringField(TEXT("class"));
-				double Confidence = JsonObject->GetNumberField(TEXT("confidence"));
-				FString Hint = JsonObject->GetStringField(TEXT("hint"));
-
-				UE_LOG(LogTemp, Warning, TEXT("Predicted Class: %s"), *PredictedClass);
-				UE_LOG(LogTemp, Warning, TEXT("Confidence: %f"), Confidence);
-				UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint);
-
-				if (!this->PuzzleHintDialogueClass) return;
-
-				PuzzleHintDialogueWidget = CreateWidget<UPuzzleHintDialogue>(GetWorld(), PuzzleHintDialogueClass);
-
-				if (PuzzleHintDialogueWidget)
-				{
-					PuzzleHintDialogueWidget->SetDialogue(*Hint);
-					PuzzleHintDialogueWidget->AddToViewport(100);
-				}
-			}
-			else
+			if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
 			{
 				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON response"));
+				return;
+			}
+
+			FString ErrorMessage;
+			if (JsonObject->TryGetStringField(TEXT("error"), ErrorMessage))
+			{
+				UE_LOG(LogTemp, Error, TEXT("Server Error: %s"), *ErrorMessage);
+				return;
+			}
+
+			FString Hint;
+			if (!JsonObject->TryGetStringField(TEXT("hint"), Hint))
+			{
+				UE_LOG(LogTemp, Error, TEXT("Hint field was not found"));
+				return;
+			}
+
+			UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint);
+
+			if (!this->PuzzleHintDialogueClass)
+			{
+				UE_LOG(LogTemp, Error, TEXT("PuzzleHintDialogueClass is null"));
+				return;
+			}
+
+			PuzzleHintDialogueWidget = CreateWidget<UPuzzleHintDialogue>(GetWorld(), PuzzleHintDialogueClass);
+
+			if (PuzzleHintDialogueWidget)
+			{
+				PuzzleHintDialogueWidget->SetDialogue(*Hint);
+				PuzzleHintDialogueWidget->AddToViewport(100);
 			}
 		});
 

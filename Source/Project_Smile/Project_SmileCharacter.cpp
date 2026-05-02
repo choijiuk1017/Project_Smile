@@ -35,6 +35,8 @@
 
 #include "Widget/PuzzleHintDialogue.h"
 #include "Widget/CaptureSelection.h"
+#include "Component/InventoryComponent.h"
+#include "Actor/ItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -77,6 +79,8 @@ AProject_SmileCharacter::AProject_SmileCharacter()
 	CaptureRoot->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
 
 	CurrentAreaID = "TutorialZone";
+
+	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 
 }
 
@@ -149,7 +153,8 @@ void AProject_SmileCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		EnhancedInputComponent->BindAction(CaptureAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::CapturePhoto);
 		
 		EnhancedInputComponent->BindAction(ToggleSelectionUIAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::ToggleCaptureSelectionUI);
-	
+		
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::Interact);
 	}
 	else
 	{
@@ -562,4 +567,25 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 		});
 
 	Request->ProcessRequest();
+}
+
+void AProject_SmileCharacter::SetCurrentInteractItem(AItemActor* Item)
+{
+	CurrentInteractItem = Item;
+}
+
+void AProject_SmileCharacter::ClearCurrentInteractItem(AItemActor* Item)
+{
+	if (CurrentInteractItem == Item)
+	{
+		CurrentInteractItem = nullptr;
+	}
+}
+
+void AProject_SmileCharacter::Interact()
+{
+	if (CurrentInteractItem)
+	{
+		CurrentInteractItem->Interact(this);
+	}
 }

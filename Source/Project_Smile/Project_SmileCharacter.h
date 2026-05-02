@@ -20,6 +20,9 @@ struct FInputActionValue;
 class UPuzzleHintDialogue;
 class UCaptureSelection;
 
+class UInventoryComponent;
+class AItemActor;
+
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -58,7 +61,8 @@ class AProject_SmileCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ToggleSelectionUIAction;
 
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* InteractAction;
 
 public:
 	AProject_SmileCharacter();
@@ -109,6 +113,11 @@ protected:
 	UPROPERTY()
 	UCaptureSelection* CaptureSelectionWidgetInstance = nullptr;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY()
+	AItemActor* CurrentInteractItem;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category="Capture")
@@ -130,6 +139,10 @@ public:
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	void SetCurrentInteractItem(AItemActor* Item);
+	void ClearCurrentInteractItem(AItemActor* Item);
+	void Interact();
 
 };
 

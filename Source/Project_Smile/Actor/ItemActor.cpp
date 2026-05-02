@@ -8,6 +8,7 @@
 
 #include "Component/InventoryComponent.h"
 #include "Data/ItemData.h"
+#include "Project_SmileCharacter.h"
 
 
 // Sets default values
@@ -24,6 +25,13 @@ AItemActor::AItemActor()
 	InteractionRange = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionRange"));
 	InteractionRange->SetupAttachment(SceneRoot);
 	InteractionRange->SetSphereRadius(150.0f);
+
+	InteractionRange->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	InteractionRange->SetCollisionResponseToAllChannels(ECR_Ignore);
+	InteractionRange->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+	InteractionRange->OnComponentBeginOverlap.AddDynamic(this, &AItemActor::OnOverlapBegin);
+	InteractionRange->OnComponentEndOverlap.AddDynamic(this, &AItemActor::OnOverlapEnd);
 
 }
 
@@ -60,6 +68,34 @@ void AItemActor::Interact(AActor* Interactor)
 	if (bAdded)
 	{
 		Destroy();
+	}
+}
+
+void AItemActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(OtherActor);
+
+	if (Player)
+	{
+		Player->SetCurrentInteractItem(this);
+	}
+}
+
+void AItemActor::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(OtherActor);
+
+	if (Player)
+	{
+		Player->ClearCurrentInteractItem(this);
 	}
 }
 

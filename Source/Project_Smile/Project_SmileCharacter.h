@@ -19,6 +19,7 @@ struct FInputActionValue;
 
 class UPuzzleHintDialogue;
 class UCaptureSelection;
+class UInteractionText;
 
 class UInventoryComponent;
 class AItemActor;
@@ -113,11 +114,21 @@ protected:
 	UPROPERTY()
 	UCaptureSelection* CaptureSelectionWidgetInstance = nullptr;
 
+	UPROPERTY()
+	UInteractionText* InteractionTextWidget = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UInteractionText> InteractionTextWidgetClass;
+
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInventoryComponent> InventoryComponent;
 
 	UPROPERTY()
 	AItemActor* CurrentInteractItem;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FString ItemInteractionText;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category="Capture")
@@ -129,6 +140,7 @@ private:
 	UPROPERTY()
 	UTextureRenderTarget2D* CaptureRenderTarget;
 
+	
 
 public:
 

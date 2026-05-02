@@ -99,3 +99,7 @@ void AItemActor::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent,
 	}
 }
 
+UItemData* AItemActor::GetItemData() const
+{
+	return ItemData;
+}

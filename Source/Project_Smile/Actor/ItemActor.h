@@ -58,4 +58,7 @@ public:
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
 
+	UItemData* GetItemData() const;
+
+
 };

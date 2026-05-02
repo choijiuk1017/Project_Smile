@@ -35,6 +35,7 @@
 
 #include "Widget/PuzzleHintDialogue.h"
 #include "Widget/CaptureSelection.h"
+#include "Widget/InteractionText.h"
 #include "Component/InventoryComponent.h"
 #include "Actor/ItemActor.h"
 
@@ -572,6 +573,14 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 void AProject_SmileCharacter::SetCurrentInteractItem(AItemActor* Item)
 {
 	CurrentInteractItem = Item;
+
+	InteractionTextWidget = CreateWidget<UInteractionText>(GetWorld(), InteractionTextWidgetClass);
+
+	if (InteractionTextWidget)
+	{
+		InteractionTextWidget->SetText(ItemInteractionText);
+		InteractionTextWidget->AddToViewport(100);
+	}
 }
 
 void AProject_SmileCharacter::ClearCurrentInteractItem(AItemActor* Item)
@@ -579,6 +588,11 @@ void AProject_SmileCharacter::ClearCurrentInteractItem(AItemActor* Item)
 	if (CurrentInteractItem == Item)
 	{
 		CurrentInteractItem = nullptr;
+	}
+
+	if (InteractionTextWidget)
+	{
+		InteractionTextWidget->RemoveFromViewport();
 	}
 }
 

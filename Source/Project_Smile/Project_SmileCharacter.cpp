@@ -33,8 +33,8 @@
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
 
-#include "Project_Smile/Widget/PuzzleHintDialogue.h"
-#include "Project_Smile/Widget/CaptureSelection.h"
+#include "Widget/PuzzleHintDialogue.h"
+#include "Widget/CaptureSelection.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 

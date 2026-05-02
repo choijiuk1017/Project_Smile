@@ -22,5 +22,7 @@ public class Project_Smile : ModuleRules
 			"Json",
 			"JsonUtilities"
         });
-	}
+
+        PublicIncludePaths.Add("Project_Smile");
+    }
 }

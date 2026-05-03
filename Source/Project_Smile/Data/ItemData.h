@@ -19,7 +19,13 @@ public:
 	FName ItemID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FName ItemName;
+	FText ItemName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	FText ItemDescription;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	TObjectPtr<UStaticMesh> InspectMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	TObjectPtr<UTexture2D> ItemIcon;

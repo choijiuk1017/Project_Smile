@@ -36,6 +36,7 @@
 #include "Widget/PuzzleHintDialogue.h"
 #include "Widget/CaptureSelection.h"
 #include "Widget/InteractionText.h"
+#include "Widget/InventoryWidget.h"
 #include "Component/InventoryComponent.h"
 #include "Actor/ItemActor.h"
 
@@ -156,6 +157,8 @@ void AProject_SmileCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		EnhancedInputComponent->BindAction(ToggleSelectionUIAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::ToggleCaptureSelectionUI);
 		
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::Interact);
+
+		EnhancedInputComponent->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::ToggleInventoryUI);
 	}
 	else
 	{
@@ -229,6 +232,33 @@ void AProject_SmileCharacter::ToggleCaptureSelectionUI()
 		}
 
 		CaptureSelectionWidgetInstance->SetKeyboardFocus();
+	}
+}
+
+void AProject_SmileCharacter::ToggleInventoryUI()
+{
+	if (InventoryWidget)
+	{
+		InventoryWidget->RemoveFromParent();
+		InventoryWidget = nullptr;
+
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			FInputModeGameOnly InputMode;
+			PC->SetInputMode(InputMode);
+			PC->bShowMouseCursor = false;
+		}
+
+		return;
+	}
+
+	if (!InventoryWidgetClass) return;
+
+	InventoryWidget = CreateWidget<UInventoryWidget>(GetWorld(), InventoryWidgetClass);
+	if (InventoryWidget)
+	{
+		InventoryWidget->AddToViewport(200);
+		InventoryWidget->SetKeyboardFocus();
 	}
 }
 

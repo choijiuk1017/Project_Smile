@@ -20,7 +20,10 @@ public class Project_Smile : ModuleRules
 			"ImageWriteQueue",
             "HTTP",
 			"Json",
-			"JsonUtilities"
+			"JsonUtilities",
+			"UMG",
+			"Slate",
+			"SlateCore"
         });
 
         PublicIncludePaths.Add("Project_Smile");

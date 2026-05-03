@@ -78,7 +78,7 @@ bool UInventoryComponent::TryAddItem(UItemData* ItemData)
 
 	FText Message = FText::Format(
 		FText::FromString(TEXT("{0} 획득")),
-		FText::FromName(ItemData->ItemName)
+		ItemData->ItemName
 	);
 
 	OnInventoryMessage.Broadcast(Message);

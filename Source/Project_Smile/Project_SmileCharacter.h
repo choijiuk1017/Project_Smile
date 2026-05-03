@@ -23,6 +23,7 @@ class UInteractionText;
 
 class UInventoryComponent;
 class AItemActor;
+class UInventoryWidget;
 
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -65,6 +66,9 @@ class AProject_SmileCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* InteractAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ToggleInventoryAction;
+
 public:
 	AProject_SmileCharacter();
 
@@ -92,6 +96,8 @@ protected:
 		int32 CropY,
 		int32 CropWidth,
 		int32 CropHeight);
+
+	void ToggleInventoryUI();
 
 protected:
 	// APawn interface
@@ -123,6 +129,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UInventoryWidget> InventoryWidgetClass;
+
+	UPROPERTY()
+	UInventoryWidget* InventoryWidget = nullptr;
 
 	UPROPERTY()
 	AItemActor* CurrentInteractItem;

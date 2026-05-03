@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditAnywhere)
 	UCurveFloat* DoorTimelineFloatCurve;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FString InteractionText;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -38,9 +41,38 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UBoxComponent* DoorProxVolume;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Door")
+	FName RequiredItemID = "KeyCard";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Door")
+	bool bConsumeItemOnOpen = true;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Door")
+	bool bIsPlayerInRange = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Door")
+	bool bIsOpen = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FString FailText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FString SuccessText;
+
+	UPROPERTY(EditAnywhere, Category = "Door")
+	UStaticMeshComponent* DoorLamp;
+
+	UPROPERTY(EditAnywhere, Category = "Door")
+	UMaterialInterface* LockedMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "Door")
+	UMaterialInterface* UnlockedMaterial;
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	void Interact(AActor* Interactor);
+
 
 private:
 	FOnTimelineFloat UpdateFunctionFloat;

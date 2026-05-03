@@ -35,6 +35,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetItemData(UItemData* InItemData);
 
+
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ItemNameText;

@@ -24,7 +24,7 @@ class UInteractionText;
 class UInventoryComponent;
 class AItemActor;
 class UInventoryWidget;
-
+class ADoorActor;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -152,7 +152,9 @@ private:
 	UPROPERTY()
 	UTextureRenderTarget2D* CaptureRenderTarget;
 
-	
+	UPROPERTY()
+	ADoorActor* CurrentInteractDoor = nullptr;
+
 
 public:
 
@@ -168,5 +170,9 @@ public:
 	void ClearCurrentInteractItem(AItemActor* Item);
 	void Interact();
 
+	void SetCurrentInteractDoor(ADoorActor* Door);
+	void ClearCurrentInteractDoor(ADoorActor* Door);
+
+	void UpdateInteractionText(const FString& NewText);
 };
 

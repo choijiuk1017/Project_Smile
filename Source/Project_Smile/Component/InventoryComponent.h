@@ -56,6 +56,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool CanPlaceItem(UItemData* ItemData, int32 StartX, int32 StartY) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool HasItemByID(FName ItemID) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool RemoveItemByID(FName ItemID);
+
 private:
 	TArray<int32> GridCells;
 
@@ -66,4 +72,6 @@ private:
 	void PlaceItem(UItemData* ItemData, int32 StartX, int32 StartY);
 
 	int32 GetIndex(int32 X, int32 Y) const;
+
+	void RebuildGrid();
 };

@@ -240,3 +240,4 @@ void UItemInspectWidget::CloseInspectWidget()
 		PC->SetIgnoreLookInput(false);
 	}
 }
+

@@ -187,3 +187,58 @@ void UInventoryComponent::PlaceItem(UItemData* ItemData, int32 StartX, int32 Sta
 		}
 	}
 }
+
+bool UInventoryComponent::HasItemByID(FName ItemID) const
+{
+	for (const FInventoryItemEntry& Entry : Items)
+	{
+		if (Entry.ItemData && Entry.ItemData->ItemID == ItemID)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UInventoryComponent::RemoveItemByID(FName ItemID)
+{
+	for (int32 i = 0; i < Items.Num(); i++)
+	{
+		if (Items[i].ItemData && Items[i].ItemData->ItemID == ItemID)
+		{
+			Items.RemoveAt(i);
+			RebuildGrid();
+			OnInventoryChanged.Broadcast();
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UInventoryComponent::RebuildGrid()
+{
+	for (int32 i = 0; i < GridCells.Num(); i++)
+	{
+		GridCells[i] = -1;
+	}
+
+	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ItemIndex++)
+	{
+		const FInventoryItemEntry& Entry = Items[ItemIndex];
+
+		for (int32 Y = Entry.StartY; Y < Entry.StartY + Entry.Height; Y++)
+		{
+			for (int32 X = Entry.StartX; X < Entry.StartX + Entry.Width; X++)
+			{
+				const int32 Index = GetIndex(X, Y);
+
+				if (GridCells.IsValidIndex(Index))
+				{
+					GridCells[Index] = ItemIndex;
+				}
+			}
+		}
+	}
+}

@@ -39,6 +39,8 @@
 #include "Widget/InventoryWidget.h"
 #include "Component/InventoryComponent.h"
 #include "Actor/ItemActor.h"
+#include "Actor/DoorActor.h"
+
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -650,10 +652,64 @@ void AProject_SmileCharacter::ClearCurrentInteractItem(AItemActor* Item)
 	}
 }
 
+void AProject_SmileCharacter::SetCurrentInteractDoor(ADoorActor* Door)
+{
+	CurrentInteractDoor = Door;
+
+	if (!InteractionTextWidget && InteractionTextWidgetClass)
+	{
+		InteractionTextWidget = CreateWidget<UInteractionText>(GetWorld(), InteractionTextWidgetClass);
+	}
+
+	if (InteractionTextWidget)
+	{
+		InteractionTextWidget->SetText(Door->InteractionText);
+		InteractionTextWidget->AddToViewport(100);
+	}
+}
+
+void AProject_SmileCharacter::ClearCurrentInteractDoor(ADoorActor* Door)
+{
+	if (CurrentInteractDoor == Door)
+	{
+		CurrentInteractDoor = nullptr;
+	}
+
+	if (!CurrentInteractItem && !CurrentInteractDoor && InteractionTextWidget)
+	{
+		InteractionTextWidget->RemoveFromParent();
+		InteractionTextWidget = nullptr;
+	}
+}
+
+void AProject_SmileCharacter::UpdateInteractionText(const FString& NewText)
+{
+	if (!InteractionTextWidget && InteractionTextWidgetClass)
+	{
+		InteractionTextWidget = CreateWidget<UInteractionText>(GetWorld(), InteractionTextWidgetClass);
+	}
+
+	if (InteractionTextWidget)
+	{
+		InteractionTextWidget->SetText(NewText);
+
+		if (!InteractionTextWidget->IsInViewport())
+		{
+			InteractionTextWidget->AddToViewport(100);
+		}
+	}
+}
+
 void AProject_SmileCharacter::Interact()
 {
 	if (CurrentInteractItem)
 	{
 		CurrentInteractItem->Interact(this);
+	}
+
+	if (CurrentInteractDoor)
+	{
+		CurrentInteractDoor->Interact(this);
+		return;
 	}
 }

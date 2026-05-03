@@ -244,6 +244,9 @@ void AProject_SmileCharacter::ToggleInventoryUI()
 
 		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
+			PC->SetIgnoreMoveInput(false);
+			PC->SetIgnoreLookInput(false);
+
 			FInputModeGameOnly InputMode;
 			PC->SetInputMode(InputMode);
 			PC->bShowMouseCursor = false;
@@ -252,12 +255,33 @@ void AProject_SmileCharacter::ToggleInventoryUI()
 		return;
 	}
 
-	if (!InventoryWidgetClass) return;
+	if (!InventoryWidgetClass)
+	{
+		return;
+	}
 
 	InventoryWidget = CreateWidget<UInventoryWidget>(GetWorld(), InventoryWidgetClass);
+
 	if (InventoryWidget)
 	{
+		InventoryWidget->SetInventoryComponent(InventoryComponent);
 		InventoryWidget->AddToViewport(200);
+		InventoryWidget->SetIsFocusable(true);
+
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->SetIgnoreMoveInput(true);
+			PC->SetIgnoreLookInput(true);
+
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			InputMode.SetHideCursorDuringCapture(false);
+
+			PC->SetInputMode(InputMode);
+			PC->bShowMouseCursor = true;
+		}
+
 		InventoryWidget->SetKeyboardFocus();
 	}
 }

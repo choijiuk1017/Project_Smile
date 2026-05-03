@@ -1,32 +1,24 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Widget/InventoryWidget.h"
 
 #include "Component/InventoryComponent.h"
+#include "Widget/InventoryItem.h"
+#include "Widget/InventorySlotWidget.h"
+#include "Widget/ItemInspectWidget.h"
 #include "Data/InventoryTypes.h"
 #include "Data/ItemData.h"
-#include "Widget/InventoryItem.h"
-
 
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
-#include "Components/Border.h"
-#include "Components/Image.h"
+#include "InputCoreTypes.h"
 
-#include "Blueprint/WidgetTree.h"
-#include "Engine/Texture2D.h"
 
 void UInventoryWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	SelectedItemData = nullptr;
-
-	CreateSlots();
 
 	if (ItemNameText)
 	{
@@ -35,18 +27,20 @@ void UInventoryWidget::NativeConstruct()
 
 	if (ItemDescriptionText)
 	{
-		ItemDescriptionText->SetText(FText::FromString(TEXT("아이템을 선택하면 설명이 표시됩니다.")));
+		ItemDescriptionText->SetText(FText::FromString(TEXT("설명 없음")));
 	}
 }
 
-void UInventoryWidget::SetInventoryComponent(UInventoryComponent* InInventoryComponent)
+void UInventoryWidget::SetInventoryComponent(UInventoryComponent* InInventory)
 {
-	InventoryComponent = InInventoryComponent;
+	InventoryComponent = InInventory;
 
-	if (InventoryComponent)
+	if (!InventoryComponent)
 	{
-		InventoryComponent->OnInventoryChanged.AddDynamic(this, &UInventoryWidget::RefreshInventory);
+		return;
 	}
+
+	InventoryComponent->OnInventoryChanged.AddDynamic(this, &UInventoryWidget::RefreshInventory);
 
 	RefreshInventory();
 }
@@ -58,36 +52,51 @@ void UInventoryWidget::RefreshInventory()
 		return;
 	}
 
-	CreateSlots();
-	CreateItemWidgets();
-}
-
-void UInventoryWidget::CreateSlots()
-{
-	if (!SlotGrid)
-	{
-		return;
-	}
-
 	SlotGrid->ClearChildren();
 
-	const int32 GridWidth = InventoryComponent ? InventoryComponent->GridWidth : 3;
-	const int32 GridHeight = InventoryComponent ? InventoryComponent->GridHeight : 3;
+	TArray<bool> OccupiedCells;
+	OccupiedCells.SetNum(InventoryComponent->GridWidth * InventoryComponent->GridHeight);
 
-	for (int32 Y = 0; Y < GridHeight; Y++)
+	for (int32 i = 0; i < OccupiedCells.Num(); i++)
 	{
-		for (int32 X = 0; X < GridWidth; X++)
-		{
-			UBorder* SlotBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		OccupiedCells[i] = false;
+	}
 
-			if (!SlotBorder)
+	for (const FInventoryItemEntry& Entry : InventoryComponent->Items)
+	{
+		for (int32 Y = Entry.StartY; Y < Entry.StartY + Entry.Height; Y++)
+		{
+			for (int32 X = Entry.StartX; X < Entry.StartX + Entry.Width; X++)
+			{
+				const int32 Index = Y * InventoryComponent->GridWidth + X;
+
+				if (OccupiedCells.IsValidIndex(Index))
+				{
+					OccupiedCells[Index] = true;
+				}
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < InventoryComponent->GridHeight; Y++)
+	{
+		for (int32 X = 0; X < InventoryComponent->GridWidth; X++)
+		{
+			UInventorySlotWidget* SlotWidget = CreateWidget<UInventorySlotWidget>(GetWorld(), InventorySlotWidgetClass);
+
+			if (!SlotWidget)
 			{
 				continue;
 			}
 
-			SlotBorder->SetBrushColor(FLinearColor(0.05f, 0.05f, 0.05f, 0.75f));
+			SlotWidget->InitSlot(X, Y);
 
-			UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(SlotBorder, Y, X);
+			const int32 CellIndex = Y * InventoryComponent->GridWidth + X;
+			SlotWidget->SetOccupied(OccupiedCells.IsValidIndex(CellIndex) && OccupiedCells[CellIndex]);
+
+			SlotWidget->OnInventorySlotClicked.AddDynamic(this, &UInventoryWidget::OnSlotClicked);
+
+			UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(SlotWidget, Y, X);
 
 			if (GridSlot)
 			{
@@ -96,16 +105,9 @@ void UInventoryWidget::CreateSlots()
 			}
 		}
 	}
-}
-
-void UInventoryWidget::CreateItemWidgets()
-{
-	if (!ItemCanvas || !InventoryComponent || !InventoryItemWidgetClass)
-	{
-		return;
-	}
 
 	ItemCanvas->ClearChildren();
+
 
 	for (const FInventoryItemEntry& Entry : InventoryComponent->Items)
 	{
@@ -128,39 +130,92 @@ void UInventoryWidget::CreateItemWidgets()
 
 		if (CanvasSlot)
 		{
-			CanvasSlot->SetPosition(FVector2D(Entry.StartX * SlotSize, Entry.StartY * SlotSize));
-			CanvasSlot->SetSize(FVector2D(Entry.Width * SlotSize, Entry.Height * SlotSize));
-			CanvasSlot->SetAutoSize(false);
+			const float PosX = Entry.StartX * SlotSize;
+			const float PosY = Entry.StartY * SlotSize;
+
+			const float SizeX = Entry.Width * SlotSize;
+			const float SizeY = Entry.Height * SlotSize;
+
+			CanvasSlot->SetPosition(FVector2D(PosX, PosY));
+			CanvasSlot->SetSize(FVector2D(SizeX, SizeY));
+
+			CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			CanvasSlot->SetPosition(FVector2D(
+				PosX + SizeX * 0.5f,
+				PosY + SizeY * 0.5f
+			));
 		}
 	}
 }
 
+void UInventoryWidget::OnSlotClicked(int32 X, int32 Y)
+{
+
+}
+
 void UInventoryWidget::SelectItem(UItemData* ItemData)
 {
-	SelectedItemData = ItemData;
-
-	if (!SelectedItemData)
+	if (!ItemData)
 	{
-		if (ItemNameText)
-		{
-			ItemNameText->SetText(FText::FromString(TEXT("아이템 없음")));
-		}
-
-		if (ItemDescriptionText)
-		{
-			ItemDescriptionText->SetText(FText::FromString(TEXT("아이템을 선택하면 설명이 표시됩니다.")));
-		}
-
 		return;
 	}
 
+	SelectedItem = ItemData;
+
 	if (ItemNameText)
 	{
-		ItemNameText->SetText(SelectedItemData->ItemName);
+		ItemNameText->SetText(ItemData->ItemName);
 	}
 
 	if (ItemDescriptionText)
 	{
-		ItemDescriptionText->SetText(SelectedItemData->ItemDescription);
+		ItemDescriptionText->SetText(ItemData->ItemDescription);
 	}
+}
+
+FReply UInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::SpaceBar)
+	{
+		OpenInspectWindow();
+		return FReply::Handled();
+	}
+
+	if (InKeyEvent.GetKey() == EKeys::Tab)
+	{
+		RemoveFromParent();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
+void UInventoryWidget::OpenInspectWindow()
+{
+	if (!SelectedItem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("조사할 아이템이 선택되지 않았습니다."));
+		return;
+	}
+
+	if (!InspectWidgetClass)
+	{
+		return;
+	}
+
+	if (!InspectWidget)
+	{
+		InspectWidget = CreateWidget<UItemInspectWidget>(GetWorld(), InspectWidgetClass);
+	}
+
+	if (InspectWidget)
+	{
+		InspectWidget->SetItemData(SelectedItem);
+		InspectWidget->AddToViewport(300);
+
+		// 인벤토리 닫기
+		RemoveFromParent();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("아이템 조사창 열기: %s"), *SelectedItem->ItemName.ToString());
 }

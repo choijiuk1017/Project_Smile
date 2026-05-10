@@ -110,16 +110,10 @@ void ADoorActor::Interact(AActor* Interactor)
 
 	if (!Inventory->HasItemByID(RequiredItemID))
 	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("필요한 키카드가 없습니다."));
-		}
-
 		if (AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(Interactor))
 		{
 			Player->UpdateInteractionText(FailText);
 		}
-
 		return;
 	}
 

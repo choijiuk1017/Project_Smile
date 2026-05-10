@@ -8,6 +8,7 @@
 
 #include "FuseCaseActor.generated.h"
 
+class ALightSwitchActor;
 /**
  * 
  */
@@ -47,9 +48,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fuse")
 	int NeedFuseNum;
 
-	UPROPERTY(BlueprintReadOnly, Category = "FuseDoor")
-	bool bIsOpen = false;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fuse")
 	TArray<UStaticMeshComponent*> FuseMeshes;
@@ -57,6 +55,16 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Fuse")
 	TArray<int32> EmptyFuseIndices;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fuse")
+	UMaterialInterface* OffMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fuse")
+	UMaterialInterface* OnMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Switch")
+	ALightSwitchActor* LightSwitch;
+
 
 private:
 	FOnTimelineFloat UpdateFunctionFloat;
@@ -66,5 +74,7 @@ private:
 
 	void RandomizeMissingFuses();
 
+	bool bIsOperated = false;
 
+	bool bIsOpen = false;
 };

@@ -8,6 +8,7 @@
 
 #include "Project_SmileCharacter.h"
 #include "Component/InventoryComponent.h"
+#include "Actor/LightSwitchActor.h"
 
 AFuseCaseActor::AFuseCaseActor()
 {
@@ -71,6 +72,10 @@ void AFuseCaseActor::Interact(AActor* Interactor)
 
 	if (!Interactor) return;
 
+	if (bIsOperated) return;
+
+	InteractionText = "";
+
 	if (bIsOpen)
 	{
 		UInventoryComponent* Inventory = Interactor->FindComponentByClass<UInventoryComponent>();
@@ -93,14 +98,59 @@ void AFuseCaseActor::Interact(AActor* Interactor)
 
 		if (bConsumeItemOnInteract)
 		{
-			Inventory->RemoveItemByID(RequiredItemID);
+			if (Inventory->RemoveItemByID(RequiredItemID))
+			{
+				if (EmptyFuseIndices.Num() > 0)
+				{
+					const int32 FilledIndex = EmptyFuseIndices[0];
+					EmptyFuseIndices.RemoveAt(0);
+
+					if (FuseMeshes.IsValidIndex(FilledIndex) && FuseMeshes[FilledIndex])
+					{
+						FuseMeshes[FilledIndex]->SetVisibility(true);
+						FuseMeshes[FilledIndex]->SetHiddenInGame(false);
+						FuseMeshes[FilledIndex]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					}
+				}
+
+				NeedFuseNum--;
+			}
 		}
 
-		if (NeedFuseNum >0 && GEngine)
+		if (NeedFuseNum > 0 && GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("퓨즈가 부족해 전원이 공급되지 않는다."));
-
+			if (AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(Interactor))
+			{
+				Player->UpdateInteractionText(FailText);
+			}
+			return;
 		}
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("작동한다."));
+
+		for (UStaticMeshComponent* FuseMesh : FuseMeshes)
+		{
+			if (FuseMesh && OnMaterial)
+			{
+				FuseMesh->SetMaterial(0, OnMaterial);
+			}
+		}
+
+		bIsOperated = true;
+
+		if (CaseProxVolume)
+		{
+			CaseProxVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			CaseProxVolume->SetGenerateOverlapEvents(false);
+		}
+
+		LightSwitch->TurnOnSwitch();
+
+		if (AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(Interactor))
+		{
+			Player->UpdateInteractionText(SuccessText);
+		}
+		return;
 	}
 	else
 	{

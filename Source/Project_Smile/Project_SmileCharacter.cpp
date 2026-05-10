@@ -40,6 +40,7 @@
 #include "Component/InventoryComponent.h"
 #include "Actor/ItemActor.h"
 #include "Actor/DoorActor.h"
+#include "Actor/InteractableActor.h"
 
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -682,6 +683,36 @@ void AProject_SmileCharacter::ClearCurrentInteractDoor(ADoorActor* Door)
 	}
 }
 
+void AProject_SmileCharacter::SetCurrentInteractableActor(AInteractableActor* InteractableActor)
+{
+	CurrentInteractableActor = InteractableActor;
+
+	if (!InteractionTextWidget && InteractionTextWidgetClass)
+	{
+		InteractionTextWidget = CreateWidget<UInteractionText>(GetWorld(), InteractionTextWidgetClass);
+	}
+
+	if (InteractionTextWidget)
+	{
+		InteractionTextWidget->SetText(InteractableActor->InteractionText);
+		InteractionTextWidget->AddToViewport(100);
+	}
+}
+
+void AProject_SmileCharacter::ClearCurrentInteractableActor(AInteractableActor* InteractableActor)
+{
+	if (CurrentInteractableActor == InteractableActor)
+	{
+		CurrentInteractableActor = nullptr;
+	}
+
+	if (!CurrentInteractItem && !CurrentInteractableActor && InteractionTextWidget)
+	{
+		InteractionTextWidget->RemoveFromParent();
+		InteractionTextWidget = nullptr;
+	}
+}
+
 void AProject_SmileCharacter::UpdateInteractionText(const FString& NewText)
 {
 	if (!InteractionTextWidget && InteractionTextWidgetClass)
@@ -710,6 +741,12 @@ void AProject_SmileCharacter::Interact()
 	if (CurrentInteractDoor)
 	{
 		CurrentInteractDoor->Interact(this);
+		return;
+	}
+
+	if (CurrentInteractableActor)
+	{
+		CurrentInteractableActor->Interact(this);
 		return;
 	}
 }

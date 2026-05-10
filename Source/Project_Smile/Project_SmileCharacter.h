@@ -25,6 +25,8 @@ class UInventoryComponent;
 class AItemActor;
 class UInventoryWidget;
 class ADoorActor;
+class AInteractableActor;
+
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -155,6 +157,8 @@ private:
 	UPROPERTY()
 	ADoorActor* CurrentInteractDoor = nullptr;
 
+	UPROPERTY()
+	AInteractableActor* CurrentInteractableActor = nullptr;
 
 public:
 
@@ -172,6 +176,9 @@ public:
 
 	void SetCurrentInteractDoor(ADoorActor* Door);
 	void ClearCurrentInteractDoor(ADoorActor* Door);
+
+	void SetCurrentInteractableActor(AInteractableActor* InteractableActor);
+	void ClearCurrentInteractableActor(AInteractableActor* InteractableActor);
 
 	void UpdateInteractionText(const FString& NewText);
 };

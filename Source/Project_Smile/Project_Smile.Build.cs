@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using UnrealBuildTool.Rules;
 
 public class Project_Smile : ModuleRules
 {
@@ -23,7 +24,10 @@ public class Project_Smile : ModuleRules
 			"JsonUtilities",
 			"UMG",
 			"Slate",
-			"SlateCore"
+			"SlateCore",
+			"AIModule",
+            "GameplayTasks",
+            "NavigationSystem"
         });
 
         PublicIncludePaths.Add("Project_Smile");

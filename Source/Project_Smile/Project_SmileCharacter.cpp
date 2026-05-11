@@ -649,7 +649,7 @@ void AProject_SmileCharacter::ClearCurrentInteractItem(AItemActor* Item)
 
 	if (InteractionTextWidget)
 	{
-		InteractionTextWidget->RemoveFromViewport();
+		InteractionTextWidget->RemoveFromParent();
 	}
 }
 

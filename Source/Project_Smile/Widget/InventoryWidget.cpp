@@ -6,6 +6,7 @@
 #include "Widget/ItemInspectWidget.h"
 #include "Data/InventoryTypes.h"
 #include "Data/ItemData.h"
+#include "Project_SmileCharacter.h"
 
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
@@ -13,6 +14,7 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
 #include "InputCoreTypes.h"
+#include "GameFramework/PlayerController.h"
 
 
 void UInventoryWidget::NativeConstruct()
@@ -30,6 +32,7 @@ void UInventoryWidget::NativeConstruct()
 		ItemDescriptionText->SetText(FText::FromString(TEXT("설명 없음")));
 	}
 }
+
 
 void UInventoryWidget::SetInventoryComponent(UInventoryComponent* InInventory)
 {
@@ -183,10 +186,18 @@ FReply UInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKey
 
 	if (InKeyEvent.GetKey() == EKeys::Tab)
 	{
-		RemoveFromParent();
-		return FReply::Handled();
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			if (APawn* Pawn = PC->GetPawn())
+			{
+				if (AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(Pawn))
+				{
+					Player->ToggleInventoryUI();
+					return FReply::Handled();
+				}
+			}
+		}
 	}
-
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 

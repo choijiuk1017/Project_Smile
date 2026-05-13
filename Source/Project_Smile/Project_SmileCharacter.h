@@ -74,6 +74,7 @@ class AProject_SmileCharacter : public ACharacter
 public:
 	AProject_SmileCharacter();
 
+	void ToggleInventoryUI();
 protected:
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
@@ -99,7 +100,7 @@ protected:
 		int32 CropWidth,
 		int32 CropHeight);
 
-	void ToggleInventoryUI();
+	
 
 protected:
 	// APawn interface

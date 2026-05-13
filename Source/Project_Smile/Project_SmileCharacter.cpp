@@ -33,6 +33,8 @@
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
 
+#include "Framework/Application/SlateApplication.h"
+
 #include "Widget/PuzzleHintDialogue.h"
 #include "Widget/CaptureSelection.h"
 #include "Widget/InteractionText.h"
@@ -247,12 +249,14 @@ void AProject_SmileCharacter::ToggleInventoryUI()
 
 		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
-			PC->SetIgnoreMoveInput(false);
-			PC->SetIgnoreLookInput(false);
+			PC->ResetIgnoreMoveInput();
+			PC->ResetIgnoreLookInput();
 
 			FInputModeGameOnly InputMode;
 			PC->SetInputMode(InputMode);
-			PC->bShowMouseCursor = false;
+			PC->SetShowMouseCursor(false);
+
+			FSlateApplication::Get().SetAllUserFocusToGameViewport();
 		}
 
 		return;
@@ -277,7 +281,7 @@ void AProject_SmileCharacter::ToggleInventoryUI()
 			PC->SetIgnoreLookInput(true);
 
 			FInputModeGameAndUI InputMode;
-			InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
+			//InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
 			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 			InputMode.SetHideCursorDuringCapture(false);
 
@@ -285,7 +289,7 @@ void AProject_SmileCharacter::ToggleInventoryUI()
 			PC->bShowMouseCursor = true;
 		}
 
-		InventoryWidget->SetKeyboardFocus();
+		//InventoryWidget->SetKeyboardFocus();
 	}
 }
 

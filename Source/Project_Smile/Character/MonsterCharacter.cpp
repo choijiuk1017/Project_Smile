@@ -14,6 +14,7 @@
 #include "Animation/AnimInstance.h"
 #include "AIController.h"
 #include "BrainComponent.h"
+#include "NavigationSystem.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 
@@ -80,6 +81,29 @@ void AMonsterCharacter::BeginPlay()
 void AMonsterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (TargetActor && bCanChase)
+	{
+		if (!IsPlayerOnNavMesh(TargetActor))
+		{
+			bCanChase = false;
+			TargetActor = nullptr;
+
+			if (AAIController* AICon = Cast<AAIController>(GetController()))
+			{
+				AICon->StopMovement();
+			}
+
+			GetCharacterMovement()->StopMovementImmediately();
+
+			if (GetMesh())
+			{
+				GetMesh()->bPauseAnims = true;
+			}
+
+			UpdateBlackboard();
+		}
+	}
 }
 
 void AMonsterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -254,4 +278,27 @@ void AMonsterCharacter::OnJumpscareMontageEnded(UAnimMontage* Montage, bool bInt
 	GetMesh()->bPauseAnims = true;
 
 	UGameplayStatics::SetGamePaused(GetWorld(), true);
+}
+
+bool AMonsterCharacter::IsPlayerOnNavMesh(AActor* PlayerActor) const
+{
+	if (!PlayerActor)
+	{
+		return false;
+	}
+
+	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		return false;
+	}
+
+	FNavLocation ProjectedLocation;
+
+	return NavSystem->ProjectPointToNavigation(
+		PlayerActor->GetActorLocation(),
+		ProjectedLocation,
+		FVector(100.0f, 100.0f, 300.0f)
+	);
 }

@@ -95,4 +95,6 @@ public:
 
 private:
 	void UpdateBlackboard();
+
+	bool IsPlayerOnNavMesh(AActor* PlayerActor) const;
 };

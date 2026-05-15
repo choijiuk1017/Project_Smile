@@ -88,6 +88,8 @@ protected:
 	UFUNCTION()
 	void OnJumpscareMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	APostProcessVolume* PostProcessVolume;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "AI")

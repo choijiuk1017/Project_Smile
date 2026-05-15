@@ -274,10 +274,8 @@ void AMonsterCharacter::OnJumpscareMontageEnded(UAnimMontage* Montage, bool bInt
 
 	GetCharacterMovement()->DisableMovement();
 
-	// 애니메이션 정지
 	GetMesh()->bPauseAnims = true;
 
-	UGameplayStatics::SetGamePaused(GetWorld(), true);
 }
 
 bool AMonsterCharacter::IsPlayerOnNavMesh(AActor* PlayerActor) const

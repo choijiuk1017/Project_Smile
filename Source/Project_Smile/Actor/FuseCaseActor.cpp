@@ -74,7 +74,7 @@ void AFuseCaseActor::Interact(AActor* Interactor)
 
 	if (bIsOperated) return;
 
-	InteractionText = "";
+	InteractionText = OpenCaseText;
 
 	if (bIsOpen)
 	{

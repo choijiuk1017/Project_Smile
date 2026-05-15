@@ -65,6 +65,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Switch")
 	ALightSwitchActor* LightSwitch;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FString OpenCaseText;
+
+
+
 
 private:
 	FOnTimelineFloat UpdateFunctionFloat;

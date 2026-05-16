@@ -751,6 +751,19 @@ void AProject_SmileCharacter::Interact()
 	if (CurrentInteractableActor)
 	{
 		CurrentInteractableActor->Interact(this);
-		return;
+		return;  
+	}
+}
+
+void AProject_SmileCharacter::GameOver()
+{
+	if (GameoverWidgetClass)
+	{
+		GameoverWidgetInstance = CreateWidget<UUserWidget>(GetWorld(), GameoverWidgetClass);
+
+		if (GameoverWidgetInstance)
+		{
+			GameoverWidgetInstance->AddToViewport(1000);
+		}
 	}
 }

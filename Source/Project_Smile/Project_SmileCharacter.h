@@ -15,6 +15,7 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
+class UUserWidget;
 struct FInputActionValue;
 
 class UPuzzleHintDialogue;
@@ -145,6 +146,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
 	FString ItemInteractionText;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> GameoverWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* GameoverWidgetInstance;
+
 private:
 	UPROPERTY(VisibleAnywhere, Category="Capture")
 	USceneComponent* CaptureRoot;
@@ -182,5 +189,7 @@ public:
 	void ClearCurrentInteractableActor(AInteractableActor* InteractableActor);
 
 	void UpdateInteractionText(const FString& NewText);
+
+	void GameOver();
 };
 

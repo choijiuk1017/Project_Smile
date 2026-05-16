@@ -8,7 +8,7 @@
 
 class UBehaviorTree;
 class USphereComponent;
-
+class ATargetPoint;
 
 UCLASS()
 class PROJECT_SMILE_API AMonsterCharacter : public ACharacter
@@ -45,6 +45,11 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI")
 	AActor* TargetActor;
+
+	UFUNCTION(BlueprintCallable)
+	void StartEscapeSequence();
+
+	void SetBlackboardTargetToEscapePoint();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
@@ -89,14 +94,34 @@ protected:
 	void OnJumpscareMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	APostProcessVolume* PostProcessVolume;
+	APostProcessVolume* GameOverPostProcessVolume;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	bool bIsEscaping;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	bool bIsIdle;
+
+	FTimerHandle EscapeTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Escape")
+	ATargetPoint* EscapeTargetPoint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Escape")
+	float EscapeWaitTime = 2.0f;
+
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "AI")
 	void FinishLookUp();
 
+	UFUNCTION(BlueprintCallable)
+	void FinishEscape();
+
 private:
 	void UpdateBlackboard();
 
 	bool IsPlayerOnNavMesh(AActor* PlayerActor) const;
+
+	bool CanSeePlayer(AActor* PlayerActor);
 };

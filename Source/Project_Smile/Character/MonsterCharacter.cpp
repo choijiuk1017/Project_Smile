@@ -3,6 +3,8 @@
 
 #include "Character/MonsterCharacter.h"
 #include "Character/MonsterAIController.h"
+#include "Project_SmileCharacter.h"
+
 
 #include "Components/SphereComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -15,6 +17,8 @@
 #include "AIController.h"
 #include "BrainComponent.h"
 #include "NavigationSystem.h"
+#include "Engine/TargetPoint.h"
+#include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 
@@ -50,14 +54,17 @@ AMonsterCharacter::AMonsterCharacter()
 	JumpscareCamera->bAutoActivate = false;
 
 	bHasDetectedPlayer = false;
+	bIsIdle = false;
 	bIsLookingUp = false;
 	bCanChase = false;
+	bIsEscaping = false;
 	TargetActor = nullptr;
 }
 
 void AMonsterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	bIsIdle = true;
 
 	if (DetectSphere)
 	{
@@ -75,6 +82,13 @@ void AMonsterCharacter::BeginPlay()
 		);
 	}
 
+	if (GameOverPostProcessVolume)
+	{
+		GameOverPostProcessVolume->bUnbound = false;
+	}
+
+	if (bIsEscaping) return;
+
 	UpdateBlackboard();
 }
 
@@ -82,28 +96,16 @@ void AMonsterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (TargetActor && bCanChase)
-	{
-		if (!IsPlayerOnNavMesh(TargetActor))
-		{
-			bCanChase = false;
-			TargetActor = nullptr;
+	//if (TargetActor && bCanChase && !bIsEscaping)
+	//{
+	//	if (!IsPlayerOnNavMesh(TargetActor))
+	//	{
+	//		//bCanChase = false;
+	//		TargetActor = nullptr;
 
-			if (AAIController* AICon = Cast<AAIController>(GetController()))
-			{
-				AICon->StopMovement();
-			}
-
-			GetCharacterMovement()->StopMovementImmediately();
-
-			if (GetMesh())
-			{
-				GetMesh()->bPauseAnims = true;
-			}
-
-			UpdateBlackboard();
-		}
-	}
+	//		UpdateBlackboard();
+	//	}
+	//}
 }
 
 void AMonsterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -137,10 +139,14 @@ void AMonsterCharacter::OnDetectSphereBeginOverlap(
 		return;
 	}
 
-	bHasDetectedPlayer = true;
-	bIsLookingUp = true;
-	bCanChase = false;
-	TargetActor = OtherActor;
+	if (CanSeePlayer(OtherActor))
+	{
+		bIsIdle = false;
+		bHasDetectedPlayer = true;
+		bIsLookingUp = true;
+		bCanChase = false;
+		TargetActor = OtherActor;
+	}
 
 	UpdateBlackboard();
 }
@@ -176,6 +182,8 @@ void AMonsterCharacter::FinishLookUp()
 		return;
 	}
 
+	if (bIsEscaping) return;
+
 	bIsLookingUp = false;
 	bCanChase = true;
 
@@ -202,6 +210,8 @@ void AMonsterCharacter::UpdateBlackboard()
 	BlackboardComp->SetValueAsBool(TEXT("bHasDetectedPlayer"), bHasDetectedPlayer);
 	BlackboardComp->SetValueAsBool(TEXT("bIsLookingUp"), bIsLookingUp);
 	BlackboardComp->SetValueAsBool(TEXT("bCanChase"), bCanChase);
+	BlackboardComp->SetValueAsBool(TEXT("bIsEscaping"), bIsEscaping);
+	BlackboardComp->SetValueAsBool(TEXT("bIsIdle"), bIsIdle);
 }
 
 void AMonsterCharacter::StartJumpscare(AActor* PlayerActor)
@@ -256,6 +266,7 @@ void AMonsterCharacter::StartJumpscare(AActor* PlayerActor)
 		FOnMontageEnded MontageEndedDelegate;
 		MontageEndedDelegate.BindUObject(this, &AMonsterCharacter::OnJumpscareMontageEnded);
 		AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, JumpscareMontage);
+
 	}
 }
 
@@ -276,6 +287,17 @@ void AMonsterCharacter::OnJumpscareMontageEnded(UAnimMontage* Montage, bool bInt
 
 	GetMesh()->bPauseAnims = true;
 
+	if (GameOverPostProcessVolume)
+	{
+		GameOverPostProcessVolume->bUnbound = true;
+	}
+
+	AProject_SmileCharacter* Player = Cast<AProject_SmileCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+
+	if (Player)
+	{
+		Player->GameOver();
+	}
 }
 
 bool AMonsterCharacter::IsPlayerOnNavMesh(AActor* PlayerActor) const
@@ -299,4 +321,92 @@ bool AMonsterCharacter::IsPlayerOnNavMesh(AActor* PlayerActor) const
 		ProjectedLocation,
 		FVector(100.0f, 100.0f, 300.0f)
 	);
+}
+
+bool AMonsterCharacter::CanSeePlayer(AActor* PlayerActor)
+{
+	if (!PlayerActor) return false;
+
+	FVector Start = GetActorLocation() + FVector(0, 0, 50.f);
+
+	FVector End = PlayerActor->GetActorLocation() + FVector(0, 0, 50.f);
+
+	FHitResult HitResult;
+
+	FCollisionQueryParams Params;
+
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
+
+	if (!bHit) return false;
+
+	return HitResult.GetActor() == PlayerActor;
+}
+
+void AMonsterCharacter::StartEscapeSequence()
+{
+	if (bIsEscaping)
+	{
+		return;
+	}
+
+	bCanChase = false;
+	bIsLookingUp = false;
+	bHasDetectedPlayer = false;
+	bIsEscaping = false;
+	TargetActor = nullptr;
+
+	if (AAIController* AICon = Cast<AAIController>(GetController()))
+	{
+		AICon->StopMovement();
+	}
+
+	GetCharacterMovement()->StopMovementImmediately();
+
+	UpdateBlackboard();
+
+	GetWorldTimerManager().SetTimer(
+		EscapeTimerHandle,
+		this,
+		&AMonsterCharacter::SetBlackboardTargetToEscapePoint,
+		EscapeWaitTime,
+		false
+	);
+}
+
+void AMonsterCharacter::SetBlackboardTargetToEscapePoint()
+{
+	if (!EscapeTargetPoint)
+	{
+		return;
+	}
+
+	bIsIdle = false;
+	bCanChase = false;
+	bIsLookingUp = false;
+	bHasDetectedPlayer = false;
+	bIsEscaping = true;
+
+	TargetActor = EscapeTargetPoint;
+
+	UpdateBlackboard();
+}
+
+void AMonsterCharacter::FinishEscape()
+{
+	bIsIdle = true;
+	bIsEscaping = false;
+	bCanChase = false;
+	bIsLookingUp = false;
+	bHasDetectedPlayer = false;
+	TargetActor = nullptr;
+
+	UpdateBlackboard();
 }

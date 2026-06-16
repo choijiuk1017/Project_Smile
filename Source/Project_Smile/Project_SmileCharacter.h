@@ -17,6 +17,7 @@ class UInputAction;
 class UInputMappingContext;
 class UUserWidget;
 struct FInputActionValue;
+class UFileJournalWidget;
 
 class UPuzzleHintDialogue;
 class UCaptureSelection;
@@ -27,6 +28,34 @@ class AItemActor;
 class UInventoryWidget;
 class ADoorActor;
 class AInteractableActor;
+
+
+USTRUCT(BlueprintType)
+struct FInvestigationFile
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	int32 FileID = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString Title;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString Area;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString SceneType;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString Observation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString Reasoning;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	FString Hint;
+};
 
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -71,6 +100,9 @@ class AProject_SmileCharacter : public ACharacter
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ToggleInventoryAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* FileJournalAction;
 
 public:
 	AProject_SmileCharacter();
@@ -170,9 +202,6 @@ private:
 
 public:
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "ID")
-	FString CurrentAreaID;
-
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
@@ -191,5 +220,59 @@ public:
 	void UpdateInteractionText(const FString& NewText);
 
 	void GameOver();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Director")
+	FString CurrentAreaID;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Director")
+	FString CurrentObjectiveID;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Director")
+	FString LastInteractionTarget;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Director")
+	int32 HintRequestCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Director")
+	float PlayTimeSeconds;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Director")
+	float AreaStaySeconds;
+
+	void SetCurrentAreaID(const FString& NewAreaID);
+	void SetCurrentObjectiveID(const FString& NewObjectiveID);
+	void SetLastInteractionTarget(const FString& NewTarget);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	TArray<FInvestigationFile> InvestigationFiles;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Investigation File")
+	int32 InvestigationFileCounter = 0;
+
+	UFUNCTION(BlueprintCallable, Category = "Investigation File")
+	void AddInvestigationFile(
+		const FString& Title,
+		const FString& Area,
+		const FString& SceneType,
+		const FString& Observation,
+		const FString& Reasoning,
+		const FString& Hint
+	);
+
+	UFUNCTION(BlueprintCallable, Category = "Investigation File")
+	const TArray<FInvestigationFile>& GetInvestigationFiles() const;
+
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UFileJournalWidget> FileJournalWidgetClass;
+
+	UPROPERTY()
+	UFileJournalWidget* FileJournalWidget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	bool bIsFileJournalOpen = false;
+
+	void ToggleFileJournal();
 };
 

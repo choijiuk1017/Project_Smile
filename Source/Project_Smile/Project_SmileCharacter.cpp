@@ -43,6 +43,7 @@
 #include "Actor/ItemActor.h"
 #include "Actor/DoorActor.h"
 #include "Actor/InteractableActor.h"
+#include "Widget/FileJournalWidget.h"
 
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -85,9 +86,15 @@ AProject_SmileCharacter::AProject_SmileCharacter()
 
 	CaptureRoot->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
 
-	CurrentAreaID = "TutorialZone";
-
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+
+	CurrentAreaID = TEXT("TutorialZone");
+	CurrentObjectiveID = TEXT("FindClue");
+	LastInteractionTarget = TEXT("None");
+
+	HintRequestCount = 0;
+	PlayTimeSeconds = 0.0f;
+	AreaStaySeconds = 0.0f;
 
 }
 
@@ -124,6 +131,10 @@ void AProject_SmileCharacter::BeginPlay()
 void  AProject_SmileCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+
+	PlayTimeSeconds += DeltaTime;
+	AreaStaySeconds += DeltaTime;
 }
 
 //////////////////////////////////////////////////////////////////////////// Input
@@ -164,6 +175,12 @@ void AProject_SmileCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::Interact);
 
 		EnhancedInputComponent->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AProject_SmileCharacter::ToggleInventoryUI);
+		EnhancedInputComponent->BindAction(
+			FileJournalAction,
+			ETriggerEvent::Started,
+			this,
+			&AProject_SmileCharacter::ToggleFileJournal
+		);
 	}
 	else
 	{
@@ -465,7 +482,14 @@ void AProject_SmileCharacter::SendCaptureToServer()
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
 
+	HintRequestCount++;
+
 	Request->SetHeader(TEXT("X-Area-Id"), CurrentAreaID);
+	Request->SetHeader(TEXT("X-Objective-Id"), CurrentObjectiveID);
+	Request->SetHeader(TEXT("X-Last-Interaction"), LastInteractionTarget);
+	Request->SetHeader(TEXT("X-Hint-Count"), FString::FromInt(HintRequestCount));
+	Request->SetHeader(TEXT("X-Play-Time"), FString::SanitizeFloat(PlayTimeSeconds));
+	Request->SetHeader(TEXT("X-Area-Stay-Time"), FString::SanitizeFloat(AreaStaySeconds));
 
 	Request->SetContent(PNGData);
 
@@ -489,13 +513,56 @@ void AProject_SmileCharacter::SendCaptureToServer()
 				FString PredictedClass = JsonObject->GetStringField(TEXT("class"));
 				double Confidence = JsonObject->GetNumberField(TEXT("confidence"));
 
-				FString Hint = JsonObject->GetStringField(TEXT("hint")); 
+				FString Hint;
+				if (!JsonObject->TryGetStringField(TEXT("hint"), Hint))
+				{
+					UE_LOG(LogTemp, Error, TEXT("Hint field was not found"));
+					return;
+				}
 
-				UE_LOG(LogTemp, Warning, TEXT("Predicted Class: %s"), *PredictedClass);
-				UE_LOG(LogTemp, Warning, TEXT("Confidence: %f"), Confidence);
-				UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint); 
+				FString FileTitle;
+				FString FileArea = CurrentAreaID;
+				FString FileSceneType;
+				FString FileObservation;
+				FString FileReasoning;
 
-				if (!this->PuzzleHintDialogueClass) return;
+				const TSharedPtr<FJsonObject>* FileObjectPtr = nullptr;
+
+				if (JsonObject->TryGetObjectField(TEXT("investigation_file"), FileObjectPtr) && FileObjectPtr && FileObjectPtr->IsValid())
+				{
+					TSharedPtr<FJsonObject> FileObject = *FileObjectPtr;
+
+					FileObject->TryGetStringField(TEXT("title"), FileTitle);
+					FileObject->TryGetStringField(TEXT("area"), FileArea);
+					FileObject->TryGetStringField(TEXT("scene_type"), FileSceneType);
+					FileObject->TryGetStringField(TEXT("observation"), FileObservation);
+					FileObject->TryGetStringField(TEXT("reasoning"), FileReasoning);
+				}
+				else
+				{
+					JsonObject->TryGetStringField(TEXT("matched_scene_type"), FileSceneType);
+					JsonObject->TryGetStringField(TEXT("rag"), FileObservation);
+
+					FileTitle = FileSceneType;
+					FileReasoning = Hint;
+				}
+
+				AddInvestigationFile(
+					FileTitle,
+					FileArea,
+					FileSceneType,
+					FileObservation,
+					FileReasoning,
+					Hint
+				);
+
+				UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint);
+
+				if (!this->PuzzleHintDialogueClass)
+				{
+					UE_LOG(LogTemp, Error, TEXT("PuzzleHintDialogueClass is null"));
+					return;
+				}
 
 				PuzzleHintDialogueWidget = CreateWidget<UPuzzleHintDialogue>(GetWorld(), PuzzleHintDialogueClass);
 
@@ -557,8 +624,14 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 	Request->SetURL(TEXT("http://127.0.0.1:5000/predict"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
+	HintRequestCount++;
+
 	Request->SetHeader(TEXT("X-Area-Id"), CurrentAreaID);
-	Request->SetHeader(TEXT("X-Spoiler-Level"), TEXT("1"));
+	Request->SetHeader(TEXT("X-Objective-Id"), CurrentObjectiveID);
+	Request->SetHeader(TEXT("X-Last-Interaction"), LastInteractionTarget);
+	Request->SetHeader(TEXT("X-Hint-Count"), FString::FromInt(HintRequestCount));
+	Request->SetHeader(TEXT("X-Play-Time"), FString::SanitizeFloat(PlayTimeSeconds));
+	Request->SetHeader(TEXT("X-Area-Stay-Time"), FString::SanitizeFloat(AreaStaySeconds));
 	Request->SetContent(PNGData);
 	Request->SetTimeout(300.0f);
 
@@ -610,6 +683,42 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 				UE_LOG(LogTemp, Error, TEXT("Hint field was not found"));
 				return;
 			}
+
+			FString FileTitle;
+			FString FileArea = CurrentAreaID;
+			FString FileSceneType;
+			FString FileObservation;
+			FString FileReasoning;
+
+			const TSharedPtr<FJsonObject>* FileObjectPtr = nullptr;
+
+			if (JsonObject->TryGetObjectField(TEXT("investigation_file"), FileObjectPtr) && FileObjectPtr && FileObjectPtr->IsValid())
+			{
+				TSharedPtr<FJsonObject> FileObject = *FileObjectPtr;
+
+				FileObject->TryGetStringField(TEXT("title"), FileTitle);
+				FileObject->TryGetStringField(TEXT("area"), FileArea);
+				FileObject->TryGetStringField(TEXT("scene_type"), FileSceneType);
+				FileObject->TryGetStringField(TEXT("observation"), FileObservation);
+				FileObject->TryGetStringField(TEXT("reasoning"), FileReasoning);
+			}
+			else
+			{
+				JsonObject->TryGetStringField(TEXT("matched_scene_type"), FileSceneType);
+				JsonObject->TryGetStringField(TEXT("rag"), FileObservation);
+
+				FileTitle = FileSceneType;
+				FileReasoning = Hint;
+			}
+
+			AddInvestigationFile(
+				FileTitle,
+				FileArea,
+				FileSceneType,
+				FileObservation,
+				FileReasoning,
+				Hint
+			);
 
 			UE_LOG(LogTemp, Warning, TEXT("Hint: %s"), *Hint);
 
@@ -766,4 +875,128 @@ void AProject_SmileCharacter::GameOver()
 			GameoverWidgetInstance->AddToViewport(1000);
 		}
 	}
+}
+
+void AProject_SmileCharacter::SetCurrentAreaID(const FString& NewAreaID)
+{
+	if (CurrentAreaID == NewAreaID)
+	{
+		return;
+	}
+
+	CurrentAreaID = NewAreaID;
+
+	AreaStaySeconds = 0.0f;
+	HintRequestCount = 0;
+	LastInteractionTarget = TEXT("None");
+
+	UE_LOG(LogTemp, Warning, TEXT("Area Changed: %s"), *CurrentAreaID);
+	UE_LOG(LogTemp, Warning, TEXT("HintRequestCount Reset"));
+}
+
+void AProject_SmileCharacter::SetCurrentObjectiveID(const FString& NewObjectiveID)
+{
+	CurrentObjectiveID = NewObjectiveID;
+
+	UE_LOG(LogTemp, Warning, TEXT("Objective Changed: %s"), *CurrentObjectiveID);
+}
+
+void AProject_SmileCharacter::SetLastInteractionTarget(const FString& NewTarget)
+{
+	LastInteractionTarget = NewTarget;
+
+	UE_LOG(LogTemp, Warning, TEXT("Last Interaction Target: %s"), *LastInteractionTarget);
+}
+
+void AProject_SmileCharacter::AddInvestigationFile(
+	const FString& Title,
+	const FString& Area,
+	const FString& SceneType,
+	const FString& Observation,
+	const FString& Reasoning,
+	const FString& Hint
+)
+{
+	InvestigationFileCounter++;
+
+	FInvestigationFile NewFile;
+	NewFile.FileID = InvestigationFileCounter;
+	NewFile.Title = FString::Printf(TEXT("사건 일지 #%d - %s"), InvestigationFileCounter, *Title);
+	NewFile.Area = Area;
+	NewFile.SceneType = SceneType;
+	NewFile.Observation = Observation;
+	NewFile.Reasoning = Reasoning;
+	NewFile.Hint = Hint;
+
+	if (InvestigationFiles.Num() >= 10)
+	{
+		InvestigationFiles.RemoveAt(0);
+	}
+
+	InvestigationFiles.Add(NewFile);
+
+	if (FileJournalWidget)
+	{
+		FileJournalWidget->RefreshFileList();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Investigation File Added: %s"), *NewFile.Title);
+}
+
+const TArray<FInvestigationFile>& AProject_SmileCharacter::GetInvestigationFiles() const
+{
+	return InvestigationFiles;
+}
+
+
+void AProject_SmileCharacter::ToggleFileJournal()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (!PC)
+	{
+		return;
+	}
+
+	if (bIsFileJournalOpen)
+	{
+		if (FileJournalWidget)
+		{
+			FileJournalWidget->RemoveFromParent();
+			FileJournalWidget = nullptr;
+		}
+
+		bIsFileJournalOpen = false;
+
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+
+		return;
+	}
+
+	if (!FileJournalWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FileJournalWidgetClass is not set."));
+		return;
+	}
+
+	FileJournalWidget = CreateWidget<UFileJournalWidget>(PC, FileJournalWidgetClass);
+
+	if (!FileJournalWidget)
+	{
+		return;
+	}
+
+	FileJournalWidget->AddToViewport(20);
+	FileJournalWidget->RefreshFileList();
+
+	bIsFileJournalOpen = true;
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetWidgetToFocus(FileJournalWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+	PC->SetInputMode(InputMode);
+	PC->bShowMouseCursor = true;
 }

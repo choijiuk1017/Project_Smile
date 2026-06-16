@@ -29,6 +29,8 @@ class UInventoryWidget;
 class ADoorActor;
 class AInteractableActor;
 
+class UAnalysisLoadingWidget;
+
 
 USTRUCT(BlueprintType)
 struct FInvestigationFile
@@ -274,5 +276,14 @@ protected:
 	bool bIsFileJournalOpen = false;
 
 	void ToggleFileJournal();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UAnalysisLoadingWidget> AnalysisLoadingWidgetClass;
+
+	UPROPERTY()
+	UAnalysisLoadingWidget* AnalysisLoadingWidget;
+
+	void ShowAnalysisLoadingUI();
+	void HideAnalysisLoadingUI();
 };
 

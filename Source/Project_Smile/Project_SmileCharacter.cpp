@@ -44,6 +44,7 @@
 #include "Actor/DoorActor.h"
 #include "Actor/InteractableActor.h"
 #include "Widget/FileJournalWidget.h"
+#include "Widget/AnalysisLoadingWidget.h"
 
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -496,6 +497,7 @@ void AProject_SmileCharacter::SendCaptureToServer()
 	Request->OnProcessRequestComplete().BindLambda(
 		[this](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
+			HideAnalysisLoadingUI();
 			if (!bWasSuccessful || !Response.IsValid())
 			{
 				UE_LOG(LogTemp, Error, TEXT("HTTP request failed"));
@@ -579,6 +581,7 @@ void AProject_SmileCharacter::SendCaptureToServer()
 			}
 		});
 		
+	ShowAnalysisLoadingUI();
 	Request->ProcessRequest();
 }
 
@@ -638,6 +641,7 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 	Request->OnProcessRequestComplete().BindLambda(
 		[this](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
+			HideAnalysisLoadingUI();
 			UE_LOG(LogTemp, Warning, TEXT("HTTP Completed"));
 			UE_LOG(LogTemp, Warning, TEXT("bWasSuccessful: %s"), bWasSuccessful ? TEXT("true") : TEXT("false"));
 			UE_LOG(LogTemp, Warning, TEXT("URL: %s"), *Req->GetURL());
@@ -737,6 +741,8 @@ void AProject_SmileCharacter::SendCaptureToServerWithSelection()
 			}
 		});
 
+
+	ShowAnalysisLoadingUI();
 	Request->ProcessRequest();
 }
 
@@ -999,4 +1005,33 @@ void AProject_SmileCharacter::ToggleFileJournal()
 
 	PC->SetInputMode(InputMode);
 	PC->bShowMouseCursor = true;
+}
+
+void AProject_SmileCharacter::ShowAnalysisLoadingUI()
+{
+	if (AnalysisLoadingWidget)
+	{
+		return;
+	}
+
+	if (!AnalysisLoadingWidgetClass)
+	{
+		return;
+	}
+
+	AnalysisLoadingWidget = CreateWidget<UAnalysisLoadingWidget>(GetWorld(), AnalysisLoadingWidgetClass);
+
+	if (AnalysisLoadingWidget)
+	{
+		AnalysisLoadingWidget->AddToViewport(500);
+	}
+}
+
+void AProject_SmileCharacter::HideAnalysisLoadingUI()
+{
+	if (AnalysisLoadingWidget)
+	{
+		AnalysisLoadingWidget->RemoveFromParent();
+		AnalysisLoadingWidget = nullptr;
+	}
 }
